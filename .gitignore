@@ -38,6 +38,7 @@ postgres_data/
 htmlcov/
 .pytest_cache/
 coverage/
+*.db
 
 # Alembic
 alembic/versions/__pycache__/
