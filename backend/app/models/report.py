@@ -1,7 +1,7 @@
 import uuid
 from datetime import datetime
 
-from sqlalchemy import Column, DateTime, ForeignKey, JSON, String, Text, UniqueConstraint
+from sqlalchemy import JSON, Column, DateTime, ForeignKey, String, Text, UniqueConstraint
 from sqlalchemy.orm import relationship
 
 from app.database import Base
@@ -26,6 +26,4 @@ class MonthlyReport(Base):
 
     user = relationship("User", back_populates="monthly_reports")
 
-    __table_args__ = (
-        UniqueConstraint("user_id", "month_key", name="unique_user_month"),
-    )
+    __table_args__ = (UniqueConstraint("user_id", "month_key", name="unique_user_month"),)

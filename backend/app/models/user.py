@@ -1,7 +1,7 @@
 import uuid
 from datetime import datetime
 
-from sqlalchemy import Boolean, Column, DateTime, Float, ForeignKey, JSON, String
+from sqlalchemy import JSON, Boolean, Column, DateTime, Float, ForeignKey, String
 from sqlalchemy.orm import relationship
 
 from app.database import Base
@@ -15,9 +15,13 @@ class User(Base):
     password_hash = Column(String, nullable=False)
     created_at = Column(DateTime, default=datetime.utcnow)
 
-    profile = relationship("UserProfile", back_populates="user", uselist=False, cascade="all, delete-orphan")
+    profile = relationship(
+        "UserProfile", back_populates="user", uselist=False, cascade="all, delete-orphan"
+    )
     transactions = relationship("Transaction", back_populates="user", cascade="all, delete-orphan")
-    monthly_reports = relationship("MonthlyReport", back_populates="user", cascade="all, delete-orphan")
+    monthly_reports = relationship(
+        "MonthlyReport", back_populates="user", cascade="all, delete-orphan"
+    )
     goals = relationship("Goal", back_populates="user", cascade="all, delete-orphan")
     chat_messages = relationship("ChatMessage", back_populates="user", cascade="all, delete-orphan")
 

@@ -5,7 +5,7 @@ Personal Finance Advisor — an AI-powered application for tracking spending, an
 ## Tech Stack
 
 - **Frontend:** React + TypeScript + Vite + Tailwind CSS 4 + shadcn/ui
-- **Backend:** Python 3.12 + FastAPI + SQLAlchemy + Alembic
+- **Backend:** Python 3.12 + FastAPI + SQLAlchemy + Alembic (managed with uv)
 - **Database:** PostgreSQL 16
 - **AI:** Anthropic Claude API
 - **Infrastructure:** Docker Compose + GitHub Actions CI
@@ -78,13 +78,17 @@ docker compose down
 docker compose down -v
 
 # Run backend tests
-docker compose exec backend pytest -v
+docker compose exec backend uv run pytest -v
 
 # Run migrations
-docker compose exec backend alembic upgrade head
+docker compose exec backend uv run alembic upgrade head
 
 # Create new migration
-docker compose exec backend alembic revision --autogenerate -m "description"
+docker compose exec backend uv run alembic revision --autogenerate -m "description"
+
+# Run backend linting
+docker compose exec backend uv run ruff check app/
+docker compose exec backend uv run ruff format app/
 
 # Access database
 docker compose exec db psql -U finance -d finance_advisor
@@ -95,8 +99,8 @@ docker compose exec db psql -U finance -d finance_advisor
 This project uses pre-commit for code quality:
 
 ```bash
-pip install pre-commit
-pre-commit install
+# Install pre-commit (use pipx or uvx to avoid global installs)
+uvx pre-commit install
 ```
 
 Hooks run automatically on commit: ruff (Python lint/format), eslint (TypeScript), tsc (type check).

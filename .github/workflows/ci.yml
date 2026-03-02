@@ -15,14 +15,14 @@ jobs:
         working-directory: backend
     steps:
       - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v5
       - uses: actions/setup-python@v5
         with:
           python-version: '3.12'
-      - run: pip install ruff mypy
-      - run: ruff check app/
-      - run: ruff format --check app/
-      - run: pip install -r requirements.txt
-      - run: mypy app/ --ignore-missing-imports
+      - run: uv sync --frozen
+      - run: uv run ruff check app/
+      - run: uv run ruff format --check app/
+      - run: uv run mypy app/ --ignore-missing-imports
 
   lint-frontend:
     name: Lint & Type Check (Frontend)
@@ -67,11 +67,12 @@ jobs:
       ANTHROPIC_API_KEY: test-key
     steps:
       - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v5
       - uses: actions/setup-python@v5
         with:
           python-version: '3.12'
-      - run: pip install -r requirements-dev.txt
-      - run: pytest -v
+      - run: uv sync --frozen
+      - run: uv run pytest -v
 
   build-frontend:
     name: Build (Frontend)

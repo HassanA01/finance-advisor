@@ -25,6 +25,4 @@ class Transaction(Base):
 
     user = relationship("User", back_populates="transactions")
 
-    __table_args__ = (
-        Index("idx_user_month", "user_id", "month_key"),
-    )
+    __table_args__ = (Index("idx_user_month", "user_id", "month_key"),)
