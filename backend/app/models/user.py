@@ -13,6 +13,7 @@ class User(Base):
     id = Column(String, primary_key=True, default=lambda: str(uuid.uuid4()))
     email = Column(String, unique=True, nullable=False, index=True)
     password_hash = Column(String, nullable=False)
+    name = Column(String, nullable=True)
     created_at = Column(DateTime, default=datetime.utcnow)
 
     profile = relationship(
@@ -42,6 +43,8 @@ class UserProfile(Base):
 
     emergency_fund = Column(Float, default=0)
     risk_tolerance = Column(String, default="medium")
+    housing_situation = Column(String, nullable=True)
+    financial_plan = Column(JSON, nullable=True)
 
     onboarding_complete = Column(Boolean, default=False)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)

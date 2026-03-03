@@ -3,7 +3,7 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from app.config import settings
 from app.logging_config import setup_logging
-from app.routers import auth, chat, goals, onboarding, profile, reports, transactions
+from app.routers import auth, chat, goals, profile, reports, transactions
 
 setup_logging(settings.LOG_LEVEL)
 
@@ -23,7 +23,6 @@ app.add_middleware(
 
 app.include_router(auth.router)
 app.include_router(profile.router)
-app.include_router(onboarding.router)
 app.include_router(transactions.router)
 app.include_router(reports.router)
 app.include_router(goals.router)

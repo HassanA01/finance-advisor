@@ -5,6 +5,7 @@ import { useAuth } from "@/hooks/useAuth";
 
 export default function RegisterPage() {
   const { register, user, loading } = useAuth();
+  const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
@@ -12,7 +13,7 @@ export default function RegisterPage() {
   const [submitting, setSubmitting] = useState(false);
 
   if (loading) return null;
-  if (user) return <Navigate to="/dashboard" replace />;
+  if (user) return <Navigate to="/chat" replace />;
 
   const validate = (): string | null => {
     if (!email || !password || !confirmPassword) return "Please fill in all fields";
@@ -31,7 +32,7 @@ export default function RegisterPage() {
     }
     setSubmitting(true);
     try {
-      await register(email, password);
+      await register(email, password, name || undefined);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Registration failed");
     } finally {
@@ -142,6 +143,20 @@ export default function RegisterPage() {
                 {error}
               </div>
             )}
+
+            <div className="space-y-2">
+              <label className="text-xs font-medium text-white/50 uppercase tracking-wider">
+                Name
+              </label>
+              <input
+                type="text"
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+                className="w-full px-4 py-3 bg-white/[0.04] border border-white/[0.08] rounded-lg text-white/90 placeholder:text-white/20 focus:outline-none focus:border-amber-500/40 focus:bg-white/[0.06] transition-all duration-200 text-sm"
+                placeholder="Your first name"
+                autoComplete="given-name"
+              />
+            </div>
 
             <div className="space-y-2">
               <label className="text-xs font-medium text-white/50 uppercase tracking-wider">

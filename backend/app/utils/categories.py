@@ -1,3 +1,7 @@
+# DEPRECATED: Transaction categorization is now handled by the AI agent
+# (app/services/agent.py). This file is kept for reference only.
+# The upload endpoint in transactions.py still uses this for backwards compat.
+
 FAMILY_SUPPORT_KEYWORDS = ["AMMI", "ABBA", "MOM", "DAD"]
 
 CATEGORY_KEYWORDS: dict[str, list[str]] = {

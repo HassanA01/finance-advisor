@@ -18,7 +18,7 @@ def register(body: RegisterRequest, response: Response, db: Session = Depends(ge
             detail="Email already registered",
         )
 
-    user = User(email=body.email, password_hash=hash_password(body.password))
+    user = User(email=body.email, password_hash=hash_password(body.password), name=body.name)
     db.add(user)
     db.flush()
 

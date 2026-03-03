@@ -7,11 +7,9 @@ import ChatPage from "@/pages/ChatPage";
 import DashboardPage from "@/pages/DashboardPage";
 import GoalsPage from "@/pages/GoalsPage";
 import LoginPage from "@/pages/LoginPage";
-import OnboardingPage from "@/pages/OnboardingPage";
 import RegisterPage from "@/pages/RegisterPage";
 import ReportsPage from "@/pages/ReportsPage";
 import TransactionsPage from "@/pages/TransactionsPage";
-import UploadPage from "@/pages/UploadPage";
 
 function App() {
   return (
@@ -21,26 +19,17 @@ function App() {
           <Route path="/login" element={<LoginPage />} />
           <Route path="/register" element={<RegisterPage />} />
           <Route
-            path="/onboarding"
-            element={
-              <ProtectedRoute>
-                <OnboardingPage />
-              </ProtectedRoute>
-            }
-          />
-          <Route
             element={
               <ProtectedRoute>
                 <AppLayout />
               </ProtectedRoute>
             }
           >
+            <Route path="/chat" element={<ChatPage />} />
             <Route path="/dashboard" element={<DashboardPage />} />
             <Route path="/transactions" element={<TransactionsPage />} />
-            <Route path="/upload" element={<UploadPage />} />
             <Route path="/reports" element={<ReportsPage />} />
             <Route path="/goals" element={<GoalsPage />} />
-            <Route path="/chat" element={<ChatPage />} />
           </Route>
           <Route path="*" element={<Navigate to="/login" replace />} />
         </Routes>

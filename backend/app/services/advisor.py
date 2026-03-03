@@ -1,3 +1,7 @@
+# DEPRECATED: Monthly analysis is now handled by the AI agent
+# (app/services/agent.py). This file is kept for the reports router
+# which still uses analyze_month() for report generation.
+
 import json
 import logging
 from typing import Any

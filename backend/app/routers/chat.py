@@ -1,104 +1,33 @@
+"""Chat router — unified endpoint for text messages and CSV uploads."""
+
 import logging
 from typing import Any
 
-import anthropic
-from fastapi import APIRouter, Depends, HTTPException, status
-from sqlalchemy import func
+from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile, status
 from sqlalchemy.orm import Session
 
 from app.config import settings
 from app.database import get_db
 from app.models.chat import ChatMessage
-from app.models.goal import Goal
-from app.models.transaction import Transaction
-from app.models.user import User, UserProfile
-from app.schemas.chat import ChatMessageResponse, ChatRequest, ChatResponse
+from app.models.user import User
+from app.schemas.chat import ChatMessageResponse, ChatResponse
+from app.services.agent import run_agent
+from app.services.csv_parser import parse_csv_raw
 from app.utils.auth import get_current_user
 
 logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/chat", tags=["chat"])
 
-SYSTEM_PROMPT = """You are a personal finance advisor for a user who banks with CIBC in Canada. \
-You are fiduciary-minded, empathetic, and focused on sustainable improvement.
-
-Key principles:
-- This user tends to burn out on intense short-term changes. Always recommend gradual steps.
-- Celebrate progress, even small wins. Never shame spending.
-- Use specific numbers from their data when available.
-- Be conversational and warm, not robotic.
-- Keep responses concise — 2-4 paragraphs max unless asked for detail.
-- If you don't have enough data, say so rather than guessing.
-
-You have access to the user's financial context below. Use it to give personalized advice.
-"""
-
-
-def _build_context(db: Session, user_id: str) -> str:
-    """Build financial context string for the AI."""
-    parts: list[str] = []
-
-    # Profile
-    profile = db.query(UserProfile).filter(UserProfile.user_id == user_id).first()
-    if profile:
-        if profile.net_monthly_income:
-            parts.append(f"Monthly income: ${profile.net_monthly_income:.2f}")
-        if profile.pay_frequency:
-            parts.append(f"Pay frequency: {profile.pay_frequency}")
-        if profile.fixed_expenses:
-            total_fixed = sum(float(v) for v in profile.fixed_expenses.values())
-            parts.append(f"Fixed monthly expenses: ${total_fixed:.2f}")
-            expenses = ", ".join(f"{k}: ${float(v):.2f}" for k, v in profile.fixed_expenses.items())
-            parts.append(f"  Breakdown: {expenses}")
-        if profile.budget_targets:
-            parts.append("Budget targets:")
-            for cat, target in profile.budget_targets.items():
-                parts.append(f"  {cat}: ${float(target):.2f}")
-        if profile.emergency_fund:
-            parts.append(f"Emergency fund: ${profile.emergency_fund:.2f}")
-
-    # Recent spending (last 2 months)
-    recent_months = (
-        db.query(Transaction.month_key)
-        .filter(Transaction.user_id == user_id)
-        .distinct()
-        .order_by(Transaction.month_key.desc())
-        .limit(2)
-        .all()
-    )
-    for (month_key,) in recent_months:
-        rows: list[Any] = (
-            db.query(Transaction.category, func.sum(Transaction.amount))
-            .filter(Transaction.user_id == user_id, Transaction.month_key == month_key)
-            .group_by(Transaction.category)
-            .all()
-        )
-        if rows:
-            total = sum(float(amt) for _, amt in rows)
-            parts.append(f"\nSpending for {month_key} (total: ${total:.2f}):")
-            for cat, amt in sorted(rows, key=lambda x: -float(x[1])):
-                parts.append(f"  {cat}: ${float(amt):.2f}")
-
-    # Goals
-    goals = db.query(Goal).filter(Goal.user_id == user_id, Goal.status == "active").all()
-    if goals:
-        parts.append("\nActive goals:")
-        for g in goals:
-            pct = (float(g.current_amount) / float(g.target_amount) * 100) if g.target_amount else 0
-            parts.append(
-                f"  {g.name}: ${float(g.current_amount):.2f} / ${float(g.target_amount):.2f} ({pct:.0f}%)"
-            )
-
-    return "\n".join(parts) if parts else "No financial data available yet."
-
 
 @router.post("", response_model=ChatResponse)
-def send_message(
-    body: ChatRequest,
+async def send_message(
+    message: str = Form(""),
+    files: list[UploadFile] = File(default=[]),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ) -> ChatResponse:
-    """Send a message to the AI advisor and get a response."""
+    """Send a message (with optional CSV files) to the AI agent."""
     if not settings.ANTHROPIC_API_KEY:
         raise HTTPException(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
@@ -106,9 +35,49 @@ def send_message(
         )
 
     user_id = str(current_user.id)
+    user_text = message.strip()
 
-    # Save user message
-    user_msg = ChatMessage(user_id=user_id, role="user", content=body.message)
+    # Parse any uploaded CSV files into raw transactions
+    raw_transactions: list[dict[str, str]] = []
+    file_names: list[str] = []
+    for f in files:
+        if f.filename and f.filename.lower().endswith(".csv"):
+            content = await f.read()
+            try:
+                txns = parse_csv_raw(content, f.filename)
+                raw_transactions.extend(txns)
+                file_names.append(f.filename)
+            except Exception:
+                logger.exception("Failed to parse CSV: %s", f.filename)
+
+    # Build the user content for the agent
+    content_parts: list[str] = []
+    if user_text:
+        content_parts.append(user_text)
+    if raw_transactions:
+        content_parts.append(
+            f"\n\n[Uploaded {len(raw_transactions)} transactions from: "
+            f"{', '.join(file_names)}]\n\n"
+            "Here are the raw transactions to categorize:\n\n"
+            "| Date | Description | Amount | Source |\n"
+            "|------|-------------|--------|--------|\n"
+        )
+        for txn in raw_transactions:
+            content_parts.append(
+                f"| {txn['date']} | {txn['description']} | ${txn['amount']} | {txn['source']} |"
+            )
+
+    combined_content = "\n".join(content_parts)
+
+    if not combined_content:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Please provide a message or upload a CSV file.",
+        )
+
+    # Save user message to DB (the text the user typed, not the full context)
+    display_message = user_text or f"[Uploaded {len(raw_transactions)} transactions]"
+    user_msg = ChatMessage(user_id=user_id, role="user", content=display_message)
     db.add(user_msg)
     db.commit()
 
@@ -122,27 +91,24 @@ def send_message(
     )
     history.reverse()
 
-    # Build API messages
-    context = _build_context(db, user_id)
-    system = f"{SYSTEM_PROMPT}\n\n--- USER'S FINANCIAL CONTEXT ---\n{context}"
-
-    api_messages: list[anthropic.types.MessageParam] = []
-    for msg in history:
+    # Build API messages — replace the last user message with the full content
+    api_messages: list[dict[str, Any]] = []
+    for msg in history[:-1]:  # All except the last (which we're replacing)
         role = str(msg.role)
         if role in ("user", "assistant"):
-            api_messages.append({"role": role, "content": str(msg.content)})  # type: ignore[typeddict-item]
+            api_messages.append({"role": role, "content": str(msg.content)})
+    # Add the full content (with transaction data) as the latest user message
+    api_messages.append({"role": "user", "content": combined_content})
 
     try:
-        client = anthropic.Anthropic(api_key=settings.ANTHROPIC_API_KEY)
-        response = client.messages.create(
-            model="claude-sonnet-4-20250514",
-            max_tokens=1024,
-            system=system,
-            messages=api_messages,
+        reply_text = run_agent(api_messages, user_id, db)
+    except RuntimeError:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="AI advisor is not configured.",
         )
-        reply_text = response.content[0].text  # type: ignore[union-attr]
     except Exception:
-        logger.exception("AI chat failed")
+        logger.exception("Agent failed")
         raise HTTPException(
             status_code=status.HTTP_502_BAD_GATEWAY,
             detail="AI advisor is temporarily unavailable. Please try again.",
