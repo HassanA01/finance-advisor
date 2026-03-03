@@ -1,9 +1,8 @@
-from pydantic import ConfigDict
-from pydantic_settings import BaseSettings
+from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
 class Settings(BaseSettings):
-    model_config = ConfigDict(env_file=".env")
+    model_config = SettingsConfigDict(env_file=".env")
 
     DATABASE_URL: str = "postgresql://finance:finance_dev@db:5432/finance_advisor"
     ANTHROPIC_API_KEY: str = ""

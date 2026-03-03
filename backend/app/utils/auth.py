@@ -36,9 +36,7 @@ def get_current_user(
             detail="Not authenticated",
         )
     try:
-        payload = jwt.decode(
-            access_token, settings.JWT_SECRET, algorithms=[settings.JWT_ALGORITHM]
-        )
+        payload = jwt.decode(access_token, settings.JWT_SECRET, algorithms=[settings.JWT_ALGORITHM])
         user_id: str = payload["sub"]
     except jwt.InvalidTokenError:
         raise HTTPException(

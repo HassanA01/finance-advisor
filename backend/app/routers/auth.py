@@ -27,7 +27,7 @@ def register(body: RegisterRequest, response: Response, db: Session = Depends(ge
     db.commit()
     db.refresh(user)
 
-    token = create_access_token(user.id)
+    token = create_access_token(str(user.id))
     response.set_cookie(
         key="access_token",
         value=token,
