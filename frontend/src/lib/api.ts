@@ -43,6 +43,44 @@ export const api = {
     request<T>(endpoint, { method: "DELETE" }),
 };
 
+export interface ProfileResponse {
+  id: string;
+  user_id: string;
+  net_monthly_income: number | null;
+  pay_frequency: string | null;
+  fixed_expenses: Record<string, number>;
+  debts: Array<{
+    name: string;
+    balance: number;
+    rate: number;
+    minimum: number;
+  }>;
+  budget_targets: Record<string, number>;
+  family_support_recipients: string[];
+  emergency_fund: number;
+  risk_tolerance: string;
+  onboarding_complete: boolean;
+}
+
+export interface OnboardingResponse {
+  reply: string;
+  profile_update: Record<string, unknown> | null;
+  onboarding_complete: boolean;
+}
+
+export const profileApi = {
+  get: () => api.get<ProfileResponse>("/profile"),
+  update: (data: Partial<ProfileResponse>) =>
+    api.put<ProfileResponse>("/profile", data),
+  completeOnboarding: () =>
+    api.post<ProfileResponse>("/profile/onboarding-complete"),
+};
+
+export const onboardingApi = {
+  chat: (message: string, history: Array<{ role: string; content: string }>) =>
+    api.post<OnboardingResponse>("/onboarding/chat", { message, history }),
+};
+
 export const authApi = {
   register: (email: string, password: string) =>
     api.post<UserResponse>("/auth/register", { email, password }),
