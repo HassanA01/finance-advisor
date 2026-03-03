@@ -81,6 +81,51 @@ export const onboardingApi = {
     api.post<OnboardingResponse>("/onboarding/chat", { message, history }),
 };
 
+export interface TransactionResponse {
+  id: string;
+  date: string;
+  description: string;
+  amount: number;
+  category: string;
+  source: string;
+  month_key: string;
+}
+
+export interface UploadResponse {
+  uploaded: number;
+  duplicates_skipped: number;
+  months_affected: string[];
+}
+
+export const transactionApi = {
+  list: (params?: { month?: string; category?: string; search?: string }) => {
+    const qs = new URLSearchParams();
+    if (params?.month) qs.set("month", params.month);
+    if (params?.category) qs.set("category", params.category);
+    if (params?.search) qs.set("search", params.search);
+    const query = qs.toString();
+    return api.get<TransactionResponse[]>(
+      `/transactions${query ? `?${query}` : ""}`
+    );
+  },
+  months: () => api.get<string[]>("/transactions/months"),
+  categories: () => api.get<string[]>("/transactions/categories"),
+  upload: async (files: File[]): Promise<UploadResponse> => {
+    const formData = new FormData();
+    files.forEach((f) => formData.append("files", f));
+    const res = await fetch(`${API_BASE}/transactions/upload`, {
+      method: "POST",
+      credentials: "include",
+      body: formData,
+    });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({ detail: "Upload failed" }));
+      throw new ApiError(err.detail || "Upload failed", res.status);
+    }
+    return res.json();
+  },
+};
+
 export const authApi = {
   register: (email: string, password: string) =>
     api.post<UserResponse>("/auth/register", { email, password }),
