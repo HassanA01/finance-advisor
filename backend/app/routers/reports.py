@@ -9,6 +9,7 @@ from app.models.report import MonthlyReport
 from app.models.transaction import Transaction
 from app.models.user import User, UserProfile
 from app.schemas.report import CategorySpending, ReportResponse
+from app.services.advisor import analyze_month
 from app.utils.auth import get_current_user
 
 router = APIRouter(prefix="/reports", tags=["reports"])
@@ -73,14 +74,23 @@ def _build_report(
             "diff": round(cur - prev, 2),
         }
 
+    # Generate AI analysis if there's spending data
+    summary = None
+    insights: list[str] = []
+    if spending:
+        profile_context = None
+        if profile and profile.net_monthly_income:
+            profile_context = {"net_monthly_income": float(profile.net_monthly_income)}
+        summary, insights = analyze_month(spending, vs_target, vs_prev_month, profile_context)
+
     report = MonthlyReport(
         user_id=user_id,
         month_key=month_key,
         spending=spending,
         vs_target=vs_target,
         vs_prev_month=vs_prev_month,
-        summary=None,
-        insights=[],
+        summary=summary or None,
+        insights=insights or [],
     )
     return report
 
