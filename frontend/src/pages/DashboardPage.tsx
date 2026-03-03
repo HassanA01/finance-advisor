@@ -150,9 +150,10 @@ export default function DashboardPage() {
 
   useEffect(() => {
     transactionApi.months().then((m) => {
-      setMonths(m);
-      if (m.length > 0 && !m.includes(selectedMonth)) {
-        setSelectedMonth(m[m.length - 1]);
+      const sorted = [...m].sort();
+      setMonths(sorted);
+      if (sorted.length > 0 && !sorted.includes(selectedMonth)) {
+        setSelectedMonth(sorted[sorted.length - 1]);
       }
     });
     profileApi.get().then(setProfile).catch(() => {});

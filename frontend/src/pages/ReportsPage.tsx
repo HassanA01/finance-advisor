@@ -33,12 +33,13 @@ export default function ReportsPage() {
 
   useEffect(() => {
     transactionApi.months().then((m) => {
-      setMonths(m);
-      if (m.length >= 2) {
-        setMonthA(m[m.length - 1]);
-        setMonthB(m[m.length - 2]);
-      } else if (m.length === 1) {
-        setMonthA(m[0]);
+      const sorted = [...m].sort();
+      setMonths(sorted);
+      if (sorted.length >= 2) {
+        setMonthA(sorted[sorted.length - 1]);
+        setMonthB(sorted[sorted.length - 2]);
+      } else if (sorted.length === 1) {
+        setMonthA(sorted[0]);
       }
     });
   }, []);
