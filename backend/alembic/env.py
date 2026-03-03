@@ -1,6 +1,11 @@
+import sys
 from logging.config import fileConfig
+from pathlib import Path
 
 from sqlalchemy import engine_from_config, pool
+
+# Ensure the backend directory is on sys.path so 'app' is importable
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 from alembic import context
 from app.config import settings
