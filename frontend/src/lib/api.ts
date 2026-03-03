@@ -158,6 +158,37 @@ export const reportApi = {
     ),
 };
 
+export interface GoalResponse {
+  id: string;
+  name: string;
+  target_amount: number;
+  current_amount: number;
+  deadline: string | null;
+  status: string;
+  created_at: string;
+  updated_at: string;
+}
+
+export const goalApi = {
+  list: () => api.get<GoalResponse[]>("/goals"),
+  create: (data: {
+    name: string;
+    target_amount: number;
+    deadline?: string;
+  }) => api.post<GoalResponse>("/goals", data),
+  update: (
+    id: string,
+    data: Partial<{
+      name: string;
+      target_amount: number;
+      current_amount: number;
+      deadline: string;
+      status: string;
+    }>
+  ) => api.put<GoalResponse>(`/goals/${id}`, data),
+  delete: (id: string) => api.delete<void>(`/goals/${id}`),
+};
+
 export const authApi = {
   register: (email: string, password: string) =>
     api.post<UserResponse>("/auth/register", { email, password }),
