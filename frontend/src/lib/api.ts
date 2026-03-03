@@ -126,6 +126,38 @@ export const transactionApi = {
   },
 };
 
+export interface CategorySpending {
+  category: string;
+  amount: number;
+  target: number | null;
+  vs_target: number | null;
+  prev_amount: number | null;
+  vs_prev: number | null;
+}
+
+export interface ReportResponse {
+  id: string;
+  month_key: string;
+  spending: Record<string, number>;
+  vs_target: Record<string, { target: number; actual: number; diff: number }>;
+  vs_prev_month: Record<
+    string,
+    { current: number; previous: number; diff: number }
+  >;
+  total_spent: number;
+  total_target: number | null;
+  categories: CategorySpending[];
+  summary: string | null;
+  insights: string[] | null;
+}
+
+export const reportApi = {
+  get: (monthKey: string, regenerate = false) =>
+    api.get<ReportResponse>(
+      `/reports/${monthKey}${regenerate ? "?regenerate=true" : ""}`
+    ),
+};
+
 export const authApi = {
   register: (email: string, password: string) =>
     api.post<UserResponse>("/auth/register", { email, password }),

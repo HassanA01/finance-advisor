@@ -7,6 +7,7 @@ import DashboardPage from "@/pages/DashboardPage";
 import LoginPage from "@/pages/LoginPage";
 import OnboardingPage from "@/pages/OnboardingPage";
 import RegisterPage from "@/pages/RegisterPage";
+import ReportsPage from "@/pages/ReportsPage";
 import TransactionsPage from "@/pages/TransactionsPage";
 import UploadPage from "@/pages/UploadPage";
 
@@ -35,6 +36,7 @@ function App() {
             <Route path="/dashboard" element={<DashboardPage />} />
             <Route path="/transactions" element={<TransactionsPage />} />
             <Route path="/upload" element={<UploadPage />} />
+            <Route path="/reports" element={<ReportsPage />} />
           </Route>
           <Route path="*" element={<Navigate to="/login" replace />} />
         </Routes>
