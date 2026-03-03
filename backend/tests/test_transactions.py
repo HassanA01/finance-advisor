@@ -1,0 +1,122 @@
+import io
+
+
+def _register_and_auth(client):
+    resp = client.post(
+        "/auth/register",
+        json={"email": "test@example.com", "password": "securepassword123"},
+    )
+    token = resp.cookies["access_token"]
+    client.cookies.set("access_token", token)
+
+
+DEBIT_CSV = """Date,Transaction,Debit,Credit
+2024-01-15,TIM HORTONS #123,5.50,
+2024-01-16,UBER EATS,25.00,
+2024-01-17,METRO GROCERY,45.00,
+2024-01-18,INTERNET TRANSFER,,500.00
+2024-01-19,UBER* TRIP,12.50,
+"""
+
+CREDIT_CSV = """Date,Transaction,Payment,Credit
+2024-02-01,AMAZON.CA,,89.99
+2024-02-02,PAYMENT THANK YOU,500.00,
+2024-02-03,STARBUCKS,,6.50
+"""
+
+
+def _upload(client, csv_content, filename="test.csv"):
+    return client.post(
+        "/transactions/upload",
+        files=[("files", (filename, io.BytesIO(csv_content.encode()), "text/csv"))],
+    )
+
+
+def test_upload_debit_csv(client):
+    _register_and_auth(client)
+    response = _upload(client, DEBIT_CSV)
+    assert response.status_code == 201
+    data = response.json()
+    # 4 transactions: TIM HORTONS, UBER EATS, METRO, UBER TRIP
+    # INTERNET TRANSFER is credit (money in) so skipped
+    assert data["uploaded"] == 4
+    assert data["duplicates_skipped"] == 0
+    assert "2024-01" in data["months_affected"]
+
+
+def test_upload_credit_csv(client):
+    _register_and_auth(client)
+    response = _upload(client, CREDIT_CSV)
+    assert response.status_code == 201
+    data = response.json()
+    # AMAZON + STARBUCKS (PAYMENT THANK YOU skipped as credit card payment)
+    assert data["uploaded"] == 2
+    assert "2024-02" in data["months_affected"]
+
+
+def test_upload_deduplication(client):
+    _register_and_auth(client)
+    _upload(client, DEBIT_CSV)
+    response = _upload(client, DEBIT_CSV)
+    data = response.json()
+    assert data["uploaded"] == 0
+    assert data["duplicates_skipped"] == 4
+
+
+def test_categorization(client):
+    _register_and_auth(client)
+    _upload(client, DEBIT_CSV)
+    response = client.get("/transactions")
+    txns = response.json()
+    categories = {t["description"]: t["category"] for t in txns}
+    assert categories["TIM HORTONS #123"] == "Eating Out"
+    assert categories["UBER EATS"] == "Uber Eats"
+    assert categories["METRO GROCERY"] == "Groceries"
+    assert categories["UBER* TRIP"] == "Transportation - Rideshare"
+
+
+def test_list_transactions_filter_month(client):
+    _register_and_auth(client)
+    _upload(client, DEBIT_CSV)
+    _upload(client, CREDIT_CSV)
+    response = client.get("/transactions?month=2024-01")
+    assert len(response.json()) == 4
+
+
+def test_list_transactions_filter_category(client):
+    _register_and_auth(client)
+    _upload(client, DEBIT_CSV)
+    response = client.get("/transactions?category=Eating Out")
+    assert all(t["category"] == "Eating Out" for t in response.json())
+
+
+def test_list_transactions_search(client):
+    _register_and_auth(client)
+    _upload(client, DEBIT_CSV)
+    response = client.get("/transactions?search=uber")
+    txns = response.json()
+    assert len(txns) == 2  # UBER EATS + UBER* TRIP
+
+
+def test_list_months(client):
+    _register_and_auth(client)
+    _upload(client, DEBIT_CSV)
+    _upload(client, CREDIT_CSV)
+    response = client.get("/transactions/months")
+    months = response.json()
+    assert "2024-01" in months
+    assert "2024-02" in months
+
+
+def test_list_categories(client):
+    _register_and_auth(client)
+    _upload(client, DEBIT_CSV)
+    response = client.get("/transactions/categories")
+    categories = response.json()
+    assert "Eating Out" in categories
+    assert "Groceries" in categories
+
+
+def test_upload_unauthenticated(client):
+    response = _upload(client, DEBIT_CSV)
+    assert response.status_code == 401
