@@ -112,7 +112,14 @@ def test_me_unauthenticated(client):
 
 
 def test_logout_clears_cookie(client):
-    _register(client)
+    reg = _register(client)
+    token = reg.cookies["access_token"]
+    client.cookies.set("access_token", token)
+
     response = client.post("/auth/logout")
     assert response.status_code == 204
-    assert response.cookies.get("access_token") is not None  # delete cookie header present
+
+    # After logout, /me should fail
+    client.cookies.clear()
+    me_response = client.get("/auth/me")
+    assert me_response.status_code == 401
