@@ -201,6 +201,130 @@ def _parse_headerless(
     return transactions
 
 
+def parse_csv_raw(content: bytes, filename: str) -> list[dict[str, str]]:
+    """Parse a CIBC CSV and return raw (uncategorized) transactions.
+
+    Returns list of dicts with: date, description, amount, source.
+    No categorization is applied — that's left to the AI agent.
+    """
+    has_headers = _has_headers(content)
+
+    if has_headers:
+        logger.info("Raw-parsing %s (detected: has headers)", filename)
+        df = pd.read_csv(io.BytesIO(content))
+        df.columns = df.columns.str.strip()
+        return _parse_raw_with_headers(df, filename)
+    else:
+        logger.info("Raw-parsing %s (detected: headerless)", filename)
+        df = pd.read_csv(io.BytesIO(content), header=None)
+        return _parse_raw_headerless(df, filename)
+
+
+def _parse_raw_with_headers(
+    df: pd.DataFrame,
+    filename: str,
+) -> list[dict[str, str]]:
+    """Raw parse a CSV with headers — no categorization."""
+    results: list[dict[str, str]] = []
+    cols = [c.lower() for c in df.columns]
+    is_credit_card = "payment" in cols
+    source = "credit_card" if is_credit_card else "debit"
+
+    for idx, row in df.iterrows():
+        description = str(row.get("Transaction", "")).strip()
+        if not description:
+            continue
+
+        date_str = str(row.get("Date", "")).strip()
+        date = _try_parse_date(date_str)
+        if date is None:
+            continue
+
+        if is_credit_card:
+            payment = _parse_float(row.get("Payment"))
+            credit = _parse_float(row.get("Credit"))
+            if payment and payment > 0:
+                continue  # Skip payment rows
+            amount = credit if credit else 0.0
+        else:
+            debit = _parse_float(row.get("Debit"))
+            credit = _parse_float(row.get("Credit"))
+            if debit and debit > 0:
+                amount = debit
+            elif credit and credit > 0:
+                continue  # Skip money-in
+            else:
+                continue
+
+        if amount <= 0:
+            continue
+
+        # Skip PAYMENT THANK YOU
+        if "PAYMENT THANK YOU" in description.upper():
+            continue
+
+        results.append(
+            {
+                "date": date.strftime("%Y-%m-%d"),
+                "description": description,
+                "amount": str(round(amount, 2)),
+                "source": source,
+            }
+        )
+
+    logger.info("%s: raw-parsed %d transactions", filename, len(results))
+    return results
+
+
+def _parse_raw_headerless(
+    df: pd.DataFrame,
+    filename: str,
+) -> list[dict[str, str]]:
+    """Raw parse a headerless CSV — no categorization."""
+    results: list[dict[str, str]] = []
+    num_cols = len(df.columns)
+    is_credit_card = num_cols >= 5
+    source = "credit_card" if is_credit_card else "debit"
+
+    for idx, row in df.iterrows():
+        date_str = str(row.iloc[0]).strip()
+        date = _try_parse_date(date_str)
+        if date is None:
+            continue
+
+        description = str(row.iloc[1]).strip()
+        if not description:
+            continue
+
+        debit = _parse_float(row.iloc[2])
+        credit = _parse_float(row.iloc[3]) if num_cols > 3 else None
+
+        if debit and debit > 0:
+            amount = debit
+        elif credit and credit > 0:
+            continue
+        else:
+            continue
+
+        if amount <= 0:
+            continue
+
+        if "PAYMENT THANK YOU" in description.upper():
+            continue
+
+        results.append(
+            {
+                "date": date.strftime("%Y-%m-%d"),
+                "description": description,
+                "amount": str(round(amount, 2)),
+                "source": source,
+            }
+        )
+
+    logger.info("%s: raw-parsed %d transactions", filename, len(results))
+    return results
+
+
 def _parse_float(value: object) -> float | None:
     if pd.isna(value):  # type: ignore[arg-type]
         return None

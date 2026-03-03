@@ -11,7 +11,7 @@ export default function LoginPage() {
   const [submitting, setSubmitting] = useState(false);
 
   if (loading) return null;
-  if (user) return <Navigate to="/dashboard" replace />;
+  if (user) return <Navigate to="/chat" replace />;
 
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();

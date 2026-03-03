@@ -5,19 +5,17 @@ import {
   List,
   LogOut,
   Target,
-  Upload,
 } from "lucide-react";
 import { Link, Outlet, useLocation } from "react-router-dom";
 
 import { useAuth } from "@/hooks/useAuth";
 
 const NAV_ITEMS = [
+  { to: "/chat", label: "Advisor", icon: Bot },
   { to: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
   { to: "/transactions", label: "Transactions", icon: List },
-  { to: "/upload", label: "Upload", icon: Upload },
   { to: "/reports", label: "Reports", icon: BarChart3 },
   { to: "/goals", label: "Goals", icon: Target },
-  { to: "/chat", label: "Advisor", icon: Bot },
 ];
 
 export default function AppLayout() {

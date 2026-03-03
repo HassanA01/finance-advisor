@@ -28,6 +28,7 @@ async function request<T>(
 export interface UserResponse {
   id: string;
   email: string;
+  name: string | null;
 }
 
 export const api = {
@@ -59,12 +60,8 @@ export interface ProfileResponse {
   family_support_recipients: string[];
   emergency_fund: number;
   risk_tolerance: string;
-  onboarding_complete: boolean;
-}
-
-export interface OnboardingResponse {
-  reply: string;
-  profile_update: Record<string, unknown> | null;
+  housing_situation: string | null;
+  financial_plan: Record<string, unknown> | null;
   onboarding_complete: boolean;
 }
 
@@ -74,11 +71,6 @@ export const profileApi = {
     api.put<ProfileResponse>("/profile", data),
   completeOnboarding: () =>
     api.post<ProfileResponse>("/profile/onboarding-complete"),
-};
-
-export const onboardingApi = {
-  chat: (message: string, history: Array<{ role: string; content: string }>) =>
-    api.post<OnboardingResponse>("/onboarding/chat", { message, history }),
 };
 
 export interface TransactionResponse {
@@ -197,15 +189,30 @@ export interface ChatMessageResponse {
 }
 
 export const chatApi = {
-  send: (message: string) =>
-    api.post<{ reply: string }>("/chat", { message }),
+  send: async (message: string, files?: File[]): Promise<{ reply: string }> => {
+    const formData = new FormData();
+    formData.append("message", message);
+    if (files) {
+      files.forEach((f) => formData.append("files", f));
+    }
+    const res = await fetch(`${API_BASE}/chat`, {
+      method: "POST",
+      credentials: "include",
+      body: formData,
+    });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({ detail: "Request failed" }));
+      throw new ApiError(err.detail || "Request failed", res.status);
+    }
+    return res.json();
+  },
   history: () => api.get<ChatMessageResponse[]>("/chat/history"),
   clearHistory: () => api.delete<void>("/chat/history"),
 };
 
 export const authApi = {
-  register: (email: string, password: string) =>
-    api.post<UserResponse>("/auth/register", { email, password }),
+  register: (email: string, password: string, name?: string) =>
+    api.post<UserResponse>("/auth/register", { email, password, name }),
   login: (email: string, password: string) =>
     api.post<UserResponse>("/auth/login", { email, password }),
   me: () => api.get<UserResponse>("/auth/me"),

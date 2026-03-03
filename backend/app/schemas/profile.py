@@ -16,6 +16,8 @@ class ProfileResponse(BaseModel):
     family_support_recipients: list[str]
     emergency_fund: float
     risk_tolerance: str
+    housing_situation: str | None = None
+    financial_plan: dict[str, Any] | None = None
     onboarding_complete: bool
 
 
@@ -28,3 +30,5 @@ class ProfileUpdate(BaseModel):
     family_support_recipients: list[str] | None = None
     emergency_fund: float | None = None
     risk_tolerance: str | None = None
+    housing_situation: str | None = None
+    financial_plan: dict[str, Any] | None = None
