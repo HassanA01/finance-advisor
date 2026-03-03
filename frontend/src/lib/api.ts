@@ -189,6 +189,20 @@ export const goalApi = {
   delete: (id: string) => api.delete<void>(`/goals/${id}`),
 };
 
+export interface ChatMessageResponse {
+  id: string;
+  role: string;
+  content: string;
+  created_at: string;
+}
+
+export const chatApi = {
+  send: (message: string) =>
+    api.post<{ reply: string }>("/chat", { message }),
+  history: () => api.get<ChatMessageResponse[]>("/chat/history"),
+  clearHistory: () => api.delete<void>("/chat/history"),
+};
+
 export const authApi = {
   register: (email: string, password: string) =>
     api.post<UserResponse>("/auth/register", { email, password }),

@@ -3,6 +3,7 @@ import { BrowserRouter, Navigate, Route, Routes } from "react-router-dom";
 import AppLayout from "@/components/AppLayout";
 import { ProtectedRoute } from "@/components/ProtectedRoute";
 import { AuthProvider } from "@/hooks/useAuth";
+import ChatPage from "@/pages/ChatPage";
 import DashboardPage from "@/pages/DashboardPage";
 import GoalsPage from "@/pages/GoalsPage";
 import LoginPage from "@/pages/LoginPage";
@@ -39,6 +40,7 @@ function App() {
             <Route path="/upload" element={<UploadPage />} />
             <Route path="/reports" element={<ReportsPage />} />
             <Route path="/goals" element={<GoalsPage />} />
+            <Route path="/chat" element={<ChatPage />} />
           </Route>
           <Route path="*" element={<Navigate to="/login" replace />} />
         </Routes>
