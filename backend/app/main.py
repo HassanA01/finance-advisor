@@ -1,7 +1,11 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
+from app.config import settings
+from app.logging_config import setup_logging
 from app.routers import auth, chat, goals, onboarding, profile, reports, transactions
+
+setup_logging(settings.LOG_LEVEL)
 
 app = FastAPI(
     title="Finance Advisor API",

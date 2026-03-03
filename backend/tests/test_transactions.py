@@ -120,3 +120,74 @@ def test_list_categories(client):
 def test_upload_unauthenticated(client):
     response = _upload(client, DEBIT_CSV)
     assert response.status_code == 401
+
+
+# --- Headerless CSV tests (real CIBC format) ---
+
+HEADERLESS_DEBIT_CSV = """2024-03-01,TIM HORTONS #456,4.75,
+2024-03-02,UBER EATS,18.50,
+2024-03-03,LOBLAWS,62.30,
+2024-03-04,PAYROLL DEPOSIT,,2317.21
+"""
+
+HEADERLESS_CREDIT_CARD_CSV = """2024-04-10,AMAZON.CA,45.99,,1234
+2024-04-11,NETFLIX,16.99,,1234
+2024-04-12,STARBUCKS,7.25,,1234
+"""
+
+HEADERLESS_MIXED_CSV = """2024-05-01,SHOPPERS DRUG MART,12.50,
+2024-05-02,INTERNET TRANSFER,,500.00
+2024-05-03,METRO GROCERY,33.75,
+"""
+
+
+def test_upload_headerless_debit_csv(client):
+    _register_and_auth(client)
+    response = _upload(client, HEADERLESS_DEBIT_CSV, "debit_march.csv")
+    assert response.status_code == 201
+    data = response.json()
+    # 3 debit transactions; PAYROLL DEPOSIT is credit (money in) → skipped
+    assert data["uploaded"] == 3
+    assert "2024-03" in data["months_affected"]
+
+
+def test_upload_headerless_credit_card_csv(client):
+    _register_and_auth(client)
+    response = _upload(client, HEADERLESS_CREDIT_CARD_CSV, "visa_april.csv")
+    assert response.status_code == 201
+    data = response.json()
+    assert data["uploaded"] == 3
+    assert "2024-04" in data["months_affected"]
+
+    # Verify source is credit_card
+    txns = client.get("/transactions?month=2024-04").json()
+    assert all(t["source"] == "credit_card" for t in txns)
+
+
+def test_upload_headerless_skips_credit_rows(client):
+    _register_and_auth(client)
+    response = _upload(client, HEADERLESS_MIXED_CSV, "mixed.csv")
+    assert response.status_code == 201
+    data = response.json()
+    # SHOPPERS + METRO = 2 debits; INTERNET TRANSFER is credit → skipped
+    assert data["uploaded"] == 2
+
+
+def test_upload_headerless_family_support(client, db):
+    _register_and_auth(client)
+
+    # Set up family support recipients on the user profile
+    from app.models.user import UserProfile
+
+    profile = db.query(UserProfile).first()
+    profile.family_support_recipients = ["Ammi"]
+    db.commit()
+
+    csv = "2024-06-01,INTERAC E-TRANSFER TO AMMI,400.00,\n"
+    response = _upload(client, csv, "etransfer.csv")
+    assert response.status_code == 201
+    data = response.json()
+    assert data["uploaded"] == 1
+
+    txns = client.get("/transactions?month=2024-06").json()
+    assert txns[0]["category"] == "Family Support"
