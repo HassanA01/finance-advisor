@@ -4,6 +4,7 @@ import AppLayout from "@/components/AppLayout";
 import { ProtectedRoute } from "@/components/ProtectedRoute";
 import { AuthProvider } from "@/hooks/useAuth";
 import DashboardPage from "@/pages/DashboardPage";
+import GoalsPage from "@/pages/GoalsPage";
 import LoginPage from "@/pages/LoginPage";
 import OnboardingPage from "@/pages/OnboardingPage";
 import RegisterPage from "@/pages/RegisterPage";
@@ -37,6 +38,7 @@ function App() {
             <Route path="/transactions" element={<TransactionsPage />} />
             <Route path="/upload" element={<UploadPage />} />
             <Route path="/reports" element={<ReportsPage />} />
+            <Route path="/goals" element={<GoalsPage />} />
           </Route>
           <Route path="*" element={<Navigate to="/login" replace />} />
         </Routes>
